@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StockBin · PAPER dashboard</title>
+<style>
+  :root {
+    --ground:#0f1622; --surface:#18212f; --surface2:#1e2939;
+    --line:#2a3648; --text:#d3dbe9; --dim:#8b97ab; --faint:#5f6b7f;
+    --gold:#d9a441; --pos:#43b581; --neg:#e0616b; --warn:#e0a13c; --bad:#e0616b;
+    --mono:'SFMono-Regular',ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ground); color:var(--text);
+         font-family:var(--sans); line-height:1.5;
+         -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1120px; margin:0 auto; padding:0 20px 64px; }
+  .num { font-variant-numeric:tabular-nums; text-align:right; }
+  .mono { font-family:var(--mono); font-size:13px; }
+  .muted { color:var(--dim); } .small { font-size:11px; }
+  .pos { color:var(--pos); } .neg { color:var(--neg); } .flat { color:var(--dim); }
+
+  /* Paper banner */
+  .paper { background:repeating-linear-gradient(45deg,#2a2410 0 14px,#242010 14px 28px);
+    border-bottom:2px solid var(--gold); }
+  .paper-inner { max-width:1120px; margin:0 auto; padding:9px 20px;
+    display:flex; align-items:center; gap:12px; color:var(--gold);
+    font-weight:600; letter-spacing:.08em; font-size:12px; text-transform:uppercase; }
+  .paper-inner .dot { width:8px; height:8px; border-radius:50%; background:var(--gold);
+    box-shadow:0 0 8px var(--gold); }
+
+  /* Top bar */
+  header { padding:26px 0 8px; display:flex; align-items:baseline;
+    justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .brand { font-size:26px; font-weight:700; letter-spacing:-.02em; }
+  .brand .b { color:var(--gold); }
+  .brand .sub { font-size:13px; font-weight:400; color:var(--dim); margin-left:10px;
+    letter-spacing:0; }
+  .stamp { font-family:var(--mono); font-size:12px; color:var(--faint); }
+
+  /* Verdict */
+  .verdict { margin-top:16px; border-radius:12px; padding:20px 22px;
+    border:1px solid var(--line); background:var(--surface); }
+  .verdict.warn { border-left:4px solid var(--warn); }
+  .verdict.bad  { border-left:4px solid var(--bad); }
+  .verdict h1 { margin:0 0 6px; font-size:20px; text-wrap:balance; }
+  .verdict p { margin:0; color:var(--dim); font-size:14px; max-width:78ch; }
+  .verdict .win { margin-top:12px; font-size:13px; color:var(--text);
+    background:var(--surface2); border:1px solid var(--line); border-radius:8px;
+    padding:10px 12px; }
+
+  section { margin-top:34px; }
+  h2 { font-size:14px; text-transform:uppercase; letter-spacing:.1em;
+    color:var(--dim); margin:0 0 4px; }
+  .lead { color:var(--faint); font-size:13px; margin:0 0 14px; max-width:80ch; }
+
+  .tablecard { background:var(--surface); border:1px solid var(--line);
+    border-radius:12px; overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; min-width:720px; }
+  thead th { text-align:left; font-weight:600; color:var(--dim); font-size:11px;
+    text-transform:uppercase; letter-spacing:.06em; padding:12px 14px;
+    border-bottom:1px solid var(--line); white-space:nowrap; }
+  thead th.num { text-align:right; }
+  tbody td { padding:12px 14px; border-bottom:1px solid var(--line);
+    vertical-align:top; }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody tr:hover { background:var(--surface2); }
+  .winrow { background:rgba(217,164,65,.07); }
+  .winrow:hover { background:rgba(217,164,65,.12); }
+  .cfgname { font-weight:600; }
+  .chips { min-width:220px; }
+  .chip { display:inline-block; font-family:var(--mono); font-size:11px;
+    background:var(--surface2); border:1px solid var(--line); border-radius:6px;
+    padding:2px 7px; margin:2px 4px 2px 0; color:var(--dim); }
+  .chip b { color:var(--text); }
+
+  .pill { display:inline-block; font-size:11px; font-weight:600; padding:3px 9px;
+    border-radius:20px; white-space:nowrap; }
+  .pill-pass { background:rgba(67,181,129,.14); color:var(--pos);
+    border:1px solid rgba(67,181,129,.35); }
+  .pill-fail { background:rgba(224,97,107,.12); color:var(--neg);
+    border:1px solid rgba(224,97,107,.32); }
+  .pill-none { background:var(--surface2); color:var(--faint);
+    border:1px solid var(--line); }
+
+  .facts { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+    gap:1px; background:var(--line); border:1px solid var(--line);
+    border-radius:12px; overflow:hidden; }
+  .fact { background:var(--surface); padding:13px 15px; }
+  .fact-k { font-size:11px; text-transform:uppercase; letter-spacing:.07em;
+    color:var(--gold); margin-bottom:3px; }
+  .fact-v { font-size:13px; color:var(--text); }
+
+  .notes { margin-top:14px; display:grid; gap:8px; }
+  .note { font-size:13px; color:var(--dim); padding-left:18px; position:relative; }
+  .note::before { content:"›"; position:absolute; left:2px; color:var(--gold); }
+
+  .steps { display:grid; gap:10px; counter-reset:s; }
+  .step { display:flex; gap:12px; align-items:flex-start;
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:10px; padding:13px 15px; }
+  .step .n { counter-increment:s; font-family:var(--mono); color:var(--gold);
+    font-weight:700; }
+  .step .n::before { content:counter(s); }
+  .step .t { font-size:13.5px; }
+  .step .t b { color:var(--text); }
+
+  footer { margin-top:40px; padding-top:18px; border-top:1px solid var(--line);
+    color:var(--faint); font-size:12px; }
+  @media (max-width:560px) { .brand { font-size:22px; } .brand .sub { display:block; margin:4px 0 0; } }
+</style>
+</head>
+<body>
+  <div class="paper">
+    <div class="paper-inner"><span class="dot"></span>
+      Paper / demo — hypothetical backtest only · no API keys · no real or paper orders · zero capital at risk</div>
+  </div>
+
+  <div class="wrap">
+    <header>
+      <div class="brand"><span class="b">Stock</span>Bin
+        <span class="sub">bStocks strategy lab</span></div>
+      <div class="stamp">generated 2026-07-03 02:07<br>
+        SPCXB, SNDKB, MUB, CRCLB, TSLAB, NVDAB · 21d · fees 0.15% round-trip</div>
+    </header>
+
+    <div style="display:grid;gap:12px;margin-top:16px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))"><div style="background:#18212f;border:1px solid #2a3648;border-left:3px solid #d9a441;border-radius:10px;padding:13px 15px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#8a95a8;margin-bottom:4px">Live paper account</div><div style="font-family:monospace;font-size:18px">$101.40 <span style="color:#43b581">+1.40%</span></div><div style="font-size:12px;color:#8a95a8;margin-top:3px">Active · 24/7 dip · 4 trades · since 2026-07-01 19:33 UTC</div></div><div style="background:#18212f;border:1px solid #2a3648;border-left:3px solid #4a9eff;border-radius:10px;padding:13px 15px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#8a95a8;margin-bottom:4px">Strategy research (daily)</div><div style="font-family:monospace;font-size:18px">+15.40% <span style="color:#8a95a8;font-size:12px">out-of-sample</span></div><div style="font-size:12px;color:#8a95a8;margin-top:3px">challenger e60_r45_tp18_24h +15.4% OOS</div></div><div style="background:#18212f;border:1px solid #2a3648;border-left:3px solid #a78bfa;border-radius:10px;padding:13px 15px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#8a95a8;margin-bottom:4px">ML win-model</div><div style="font-family:monospace;font-size:18px">AUC 0.647</div><div style="font-size:12px;color:#8a95a8;margin-top:3px">136 setups · useful</div></div></div>
+
+    <div class="verdict warn">
+      <h1>Step 1 verdict — 🟡 MARGINAL — a candidate tuning, but not yet proven</h1>
+      <p>Best config <b>E relaxed+wide</b> nets +7.53% over 21d (33 trades) — better than the crypto baseline, but on a tiny one-regime sample. Treat as a hypothesis to forward-test, NOT a green light to risk money.</p>
+      <div class="win">Best tuning so far: <b>E relaxed+wide</b> — market-hours, loose entry, wide TP. Params: edge≥60, rsi_1h≤45.0, TP 2.20% / SL 0.90%, US-session entries only.</div>
+    </div>
+
+    <section>
+      <h2>Strategy 1 · Dip-buyer gate (mean-reversion) — tuning shootout</h2>
+      <p class="lead">The same oversold-dip gate as OptaBin, retuned for stocks.
+        Each row isolates one idea so we can see what actually helps. A config
+        must clear its break-even win-rate (after fees) to be worth anything.
+        ★ = current best.</p>
+      <div class="tablecard"><table>
+        <thead><tr>
+          <th>Config</th><th>Entries</th><th>Targets</th>
+          <th class="num">Trades</th><th class="num">Win rate</th>
+          <th class="num">Net (21d)</th><th>Verdict</th><th>Per stock</th>
+        </tr></thead>
+        <tbody>
+        <tr class="">
+          <td class="cfgname">A crypto-baseline
+            <div class="muted small">original crypto gate, all hours</div></td>
+          <td class="mono">all&nbsp;hrs</td>
+          <td class="mono">TP 1.20 / SL 0.50
+            <div class="muted small">R:R 2.40</div></td>
+          <td class="mono num">26</td>
+          <td class="mono num">40.0%<div class="muted small">be 38.2%</div></td>
+          <td class="mono num pos"><b>+1.32%</b></td>
+          <td><span class="pill pill-pass">clears break-even</span></td>
+          <td class="chips"><span class="chip"><b>SPCXB</b> 3t · <span class="neg">-1.95%</span></span><span class="chip"><b>SNDKB</b> 4t · <span class="pos">+0.80%</span></span><span class="chip"><b>MUB</b> 3t · <span class="neg">-0.25%</span></span><span class="chip"><b>CRCLB</b> 7t · <span class="pos">+0.55%</span></span><span class="chip"><b>TSLAB</b> 3t · <span class="pos">+1.45%</span></span><span class="chip"><b>NVDAB</b> 6t · <span class="pos">+0.72%</span></span></td>
+        </tr>
+        <tr class="">
+          <td class="cfgname">B +market-hours
+            <div class="muted small">same gate, US session entries only</div></td>
+          <td class="mono">session</td>
+          <td class="mono">TP 1.20 / SL 0.50
+            <div class="muted small">R:R 2.40</div></td>
+          <td class="mono num">13</td>
+          <td class="mono num">33.3%<div class="muted small">be 38.2%</div></td>
+          <td class="mono num neg"><b>-0.43%</b></td>
+          <td><span class="pill pill-fail">below break-even</span></td>
+          <td class="chips"><span class="chip"><b>SPCXB</b> 1t · <span class="neg">-0.65%</span></span><span class="chip"><b>SNDKB</b> 2t · <span class="pos">+0.40%</span></span><span class="chip"><b>MUB</b> 2t · <span class="pos">+0.40%</span></span><span class="chip"><b>CRCLB</b> 4t · <span class="neg">-0.90%</span></span><span class="chip"><b>TSLAB</b> 1t · <span class="pos">+1.05%</span></span><span class="chip"><b>NVDAB</b> 3t · <span class="neg">-0.73%</span></span></td>
+        </tr>
+        <tr class="">
+          <td class="cfgname">C +wider-target
+            <div class="muted small">market-hours + wider TP/SL</div></td>
+          <td class="mono">session</td>
+          <td class="mono">TP 2.00 / SL 0.80
+            <div class="muted small">R:R 2.50</div></td>
+          <td class="mono num">13</td>
+          <td class="mono num">18.2%<div class="muted small">be 33.9%</div></td>
+          <td class="mono num neg"><b>-4.96%</b></td>
+          <td><span class="pill pill-fail">below break-even</span></td>
+          <td class="chips"><span class="chip"><b>SPCXB</b> 1t · <span class="neg">-0.95%</span></span><span class="chip"><b>SNDKB</b> 2t · <span class="neg">-1.90%</span></span><span class="chip"><b>MUB</b> 2t · <span class="neg">-1.90%</span></span><span class="chip"><b>CRCLB</b> 4t · <span class="pos">+1.80%</span></span><span class="chip"><b>TSLAB</b> 1t · <span class="neg">-0.95%</span></span><span class="chip"><b>NVDAB</b> 3t · <span class="neg">-1.06%</span></span></td>
+        </tr>
+        <tr class="">
+          <td class="cfgname">D relaxed-gate
+            <div class="muted small">market-hours, looser entry, mid TP</div></td>
+          <td class="mono">session</td>
+          <td class="mono">TP 1.50 / SL 0.70
+            <div class="muted small">R:R 2.14</div></td>
+          <td class="mono num">34</td>
+          <td class="mono num">42.4%<div class="muted small">be 38.6%</div></td>
+          <td class="mono num pos"><b>+3.62%</b></td>
+          <td><span class="pill pill-pass">clears break-even</span></td>
+          <td class="chips"><span class="chip"><b>SPCXB</b> 2t · <span class="pos">+0.50%</span></span><span class="chip"><b>SNDKB</b> 8t · <span class="neg">-0.20%</span></span><span class="chip"><b>MUB</b> 8t · <span class="neg">-0.20%</span></span><span class="chip"><b>CRCLB</b> 8t · <span class="pos">+2.00%</span></span><span class="chip"><b>TSLAB</b> 2t · <span class="pos">+0.50%</span></span><span class="chip"><b>NVDAB</b> 6t · <span class="pos">+1.02%</span></span></td>
+        </tr>
+        <tr class="winrow">
+          <td class="cfgname">E relaxed+wide ★
+            <div class="muted small">market-hours, loose entry, wide TP</div></td>
+          <td class="mono">session</td>
+          <td class="mono">TP 2.20 / SL 0.90
+            <div class="muted small">R:R 2.44</div></td>
+          <td class="mono num">33</td>
+          <td class="mono num">41.9%<div class="muted small">be 33.9%</div></td>
+          <td class="mono num pos"><b>+7.53%</b></td>
+          <td><span class="pill pill-pass">clears break-even</span></td>
+          <td class="chips"><span class="chip"><b>SPCXB</b> 2t · <span class="pos">+1.00%</span></span><span class="chip"><b>SNDKB</b> 8t · <span class="neg">-2.20%</span></span><span class="chip"><b>MUB</b> 8t · <span class="pos">+0.90%</span></span><span class="chip"><b>CRCLB</b> 8t · <span class="pos">+7.10%</span></span><span class="chip"><b>TSLAB</b> 2t · <span class="neg">-2.10%</span></span><span class="chip"><b>NVDAB</b> 5t · <span class="pos">+2.83%</span></span></td>
+        </tr></tbody>
+      </table></div>
+      <div class="notes">
+        <div class="note"><b>Surprise finding:</b> restricting entries to real
+          US market hours (config B) made results <i>worse</i>, not better —
+          against our going-in assumption. On this tiny sample the off-hours
+          entries happened to help; needs more data to trust either way.</div>
+        <div class="note">The edge in the best config is concentrated in one or
+          two stocks over ~14 trades. That is well within luck territory —
+          hence "candidate," not "proven."</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Strategy 2 · Trend-following — vs. just holding</h2>
+      <p class="lead">The opposite personality: buy strength, ride it with a
+        3% trailing stop. The honest bar isn't win rate —
+        it's whether active trading beats simply <b>holding</b> the stock. It
+        mostly doesn't here.</p>
+      <div class="tablecard"><table>
+        <thead><tr>
+          <th>Strategy</th><th class="num">Avg return</th><th class="num">If held</th>
+          <th class="num">Win rate</th><th class="num">Profit factor</th>
+          <th class="num">Beats hold</th><th>Verdict</th>
+        </tr></thead>
+        <tbody>
+        <tr>
+          <td class="cfgname">ema_cross</td>
+          <td class="mono num neg">-2.00%</td>
+          <td class="mono num neg">-7.63%</td>
+          <td class="mono num">37.5%</td>
+          <td class="mono num">0.73</td>
+          <td class="mono num">4/6</td>
+          <td><span class="pill pill-fail">holding wins</span></td>
+        </tr>
+        <tr>
+          <td class="cfgname">donchian</td>
+          <td class="mono num neg">-4.65%</td>
+          <td class="mono num neg">-7.63%</td>
+          <td class="mono num">33.4%</td>
+          <td class="mono num">0.53</td>
+          <td class="mono num">2/6</td>
+          <td><span class="pill pill-fail">holding wins</span></td>
+        </tr>
+        <tr>
+          <td class="cfgname">momentum</td>
+          <td class="mono num neg">-5.01%</td>
+          <td class="mono num neg">-7.63%</td>
+          <td class="mono num">25.2%</td>
+          <td class="mono num">0.73</td>
+          <td class="mono num">2/6</td>
+          <td><span class="pill pill-fail">holding wins</span></td>
+        </tr></tbody>
+      </table></div>
+      <div class="notes">
+        <div class="note">The only "beats hold" wins came on a stock that
+          <i>crashed</i> — dodging a fall isn't the same as making money.
+          Trend-following did <b>not</b> fit bStocks better than crypto, contrary
+          to the thesis.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>What bStocks are (learned from Binance)</h2>
+      <div class="facts"><div class="fact"><div class="fact-k">What they are</div><div class="fact-v">Tokenized US stocks — certificates, NOT direct share ownership. Issued by BTech Holdings (a Binance affiliate).</div></div><div class="fact"><div class="fact-k">Backing</div><div class="fact-v">Each token 1:1 backed by a real share held with a regulated custodian. A Proof-of-Collateral page is published.</div></div><div class="fact"><div class="fact-k">Chain</div><div class="fact-v">Standard BEP-20 tokens on BNB Chain — self-custody + DeFi compatible. Trade via the same /api/v3 spot endpoints as crypto.</div></div><div class="fact"><div class="fact-k">Trading hours</div><div class="fact-v">24/7, weekends included — but the REAL US market is open only ~6.5h/day (09:30–16:00 New York). Off-hours prices go thin/gappy.</div></div><div class="fact"><div class="fact-k">Fees</div><div class="fact-v">Zero conversion fee stock↔token; zero maker fee promo at launch; standard spot fees on secondary trades. Spreads still eat thin targets.</div></div><div class="fact"><div class="fact-k">Minimum</div><div class="fact-v">Fractional from as little as $5 per trade.</div></div><div class="fact"><div class="fact-k">Dividends / splits</div><div class="fact-v">Dividends auto-reinvest on the ex-date; splits &amp; corporate actions processed automatically.</div></div><div class="fact"><div class="fact-k">Launch set</div><div class="fact-v">CRCLB (Circle), NVDAB (NVIDIA), TSLAB (Tesla), MUB (Micron), SNDKB (SanDisk); SPCXB (SpaceX) pending its listing.</div></div><div class="fact"><div class="fact-k">Eligibility</div><div class="fact-v">ADGM (Abu Dhabi) only. NOT offered to US persons.</div></div><div class="fact"><div class="fact-k">Age / risk</div><div class="fact-v">Listed ~11 Jun 2026 — only ~3 weeks of history, one market regime. Any early result is directional, not proof.</div></div></div>
+    </section>
+
+    <section>
+      <h2>Recommended next steps</h2>
+      <div class="steps">
+        <div class="step"><span class="n"></span><span class="t">
+          <b>Don't build the live rig yet.</b> Step-1 is 🟡 marginal on ~3 weeks
+          of one-regime data. That's a hypothesis, not an edge.</span></div>
+        <div class="step"><span class="n"></span><span class="t">
+          <b>Let history accumulate.</b> The product is only ~3 weeks old. Re-run
+          this dashboard weekly; watch whether the best config holds up
+          out-of-sample.</span></div>
+        <div class="step"><span class="n"></span><span class="t">
+          <b>If it keeps holding →</b> build the separate PAPER pipeline (data
+          collector tagged in/out of market hours, paper engine, "beat SPY/QQQ"
+          benchmark) and forward-test ~1 week before any talk of real money.</span></div>
+        <div class="step"><span class="n"></span><span class="t">
+          <b>Before ever going live:</b> add an earnings blackout (stocks gap
+          ~10% on earnings) and confirm spreads on the exact names traded.</span></div>
+      </div>
+    </section>
+
+    <footer>
+      <p style="margin-bottom:8px"><a href="index.html" style="color:#d9a441">← Back to the PAPER trading terminal</a></p>
+      StockBin is a disciplined experiment: prove on data → paper-trade → risk
+      real money only if it genuinely earns. This dashboard shows hypothetical
+      backtest results and does not represent any real position, order, or
+      profit. Regenerate anytime with <span class="mono">python build_dashboard.py</span>.
+    </footer>
+  </div>
+</body>
+</html>
