@@ -245,9 +245,11 @@ function render(){
   // honest edge-status verdict — what the numbers actually MEAN
   (function(){
     const st=M.strategy, be=Math.round((st.sl+M.fee_round_trip_pct/100)/(st.tp+st.sl)*1000)/10;
-    const wr=P.win_rate, n=P.closed_trades, decided=P.wins+P.losses;
+    // Use the CUMULATIVE track record (append-only ledger) as the edge sample —
+    // it never shrinks when the universe churns, unlike the current recompute.
+    const wr=(P.cumulative_win_rate ?? P.win_rate), n=(P.cumulative_closed_trades ?? P.closed_trades);
     let cls,lbl,sub;
-    if(decided<20){cls='s-collect';lbl='Collecting evidence';sub=`Only ${n} trades — too few to judge. Need ~200 to trust the edge.`;}
+    if(n<20){cls='s-collect';lbl='Collecting evidence';sub=`Only ${n} trades — too few to judge. Need ~200 to trust the edge.`;}
     else if(wr < be-1.5){cls='s-none';lbl='No demonstrable edge';sub=`Win rate ${wr}% is below the ${be}% break-even — the strategy isn't profitable on this sample.`;}
     else if(wr < be+1){cls='s-marginal';lbl='Marginal — right at break-even';sub=`Win rate ${wr}% ≈ ${be}% break-even. Treading water; undecided.`;}
     else if(n>=200 && B.beats_hold){cls='s-proven';lbl='Edge looks real';sub=`Win rate ${wr}% above ${be}% break-even across ${n} trades. Now worth a live conversation.`;}
@@ -259,8 +261,8 @@ function render(){
   const strip=[
    ['Portfolio value', money(A.equity), pct(A.total_return_pct), cls(A.total_return_pct)],
    ['Total P&L', money(A.equity-M.capital), pct(A.total_return_pct), cls(A.total_return_pct)],
-   ['Realized', money(A.realized_pnl), P.closed_trades+' closed', cls(A.realized_pnl)],
-   ['Win rate', P.win_rate+'%', P.wins+'W / '+P.losses+'L', 'dim'],
+   ['Realized', money(A.realized_pnl), (P.cumulative_closed_trades ?? P.closed_trades)+' trades (all-time)', cls(A.realized_pnl)],
+   ['Win rate', (P.cumulative_win_rate ?? P.win_rate)+'%', 'break-even '+Math.round((M.strategy.sl+M.fee_round_trip_pct/100)/(M.strategy.tp+M.strategy.sl)*1000)/10+'%', 'dim'],
    ['Open now', String(A.open_positions), 'of '+M.max_concurrent+' max', 'dim'],
    [vsq?('vs '+B.qqq_symbol):'vs market', vsq?pct(B.vs_qqq_pct):pct(B.vs_hold_pct),
      vsq?(B.qqq_days+'d — early'):'basket', cls(vsq?B.vs_qqq_pct:B.vs_hold_pct)],
